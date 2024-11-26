@@ -1,0 +1,36 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+ 
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+ 
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+ 
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+ 
+    - name: Remove existing files on EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "sudo rm -rf /usr/share/nginx/html/*"
+ 
+    - name: Upload new files to EC2
+      run: |
+        scp -r * ec2-user@${{ secrets.EC2_HOST }}:/tmp
+ 
+    - name: Deploy and restart NGINX
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          sudo cp /tmp/*.html /usr/share/nginx/html/
+          sudo cp /tmp/*.css /usr/share/nginx/html/
+          sudo cp /tmp/*.js /usr/share/nginx/html/
+          sudo systemctl restart nginx
+        "
